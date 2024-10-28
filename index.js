@@ -33,7 +33,9 @@ app.use((err, req, res, next) => {
         stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
-
+app.get("/",(req,res)=>{
+res.json({message:'Hello Bhi kese Ho'})
+})
 // Start server
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
