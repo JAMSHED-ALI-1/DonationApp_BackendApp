@@ -4,6 +4,7 @@ const campaignRoutes = require('./routes/compainroute');
 const { verifyCloudinaryConfig } = require('./config/cloudinary');
 const userRoutes = require('./routes/userRoutes.js');
 const categoryRoutes = require('./routes/categoryRoute');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -17,6 +18,20 @@ verifyCloudinaryConfig();
 
 // Connect to Database
 connectDB();
+
+const corsOptions = {
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  };
+  
+  app.use(cors(corsOptions));
 
 // Routes
 app.use('/api/users', userRoutes);
