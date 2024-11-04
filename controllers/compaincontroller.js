@@ -1,70 +1,176 @@
 const Campaign = require('../models/compain');
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
-const cloudinary = require('../config/cloudinary');
+// const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 // Your existing createCampaign function
-const createCampaign = async (req, res) => {
-    try {
-        console.log('Request body:', req.body);
-        console.log('Request file:', req.file);
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
+const cloudinary = require('cloudinary').v2;
 
-        const { 
-            author, 
-            title, 
-            content, 
-            category,
-            fundRaisingStartDate,
-            fundRaisingEndDate,
-            url,
-            donationGoal
-        } = req.body;
-
-        const cloudinaryResponse = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'campaigns',
-            resource_type: 'auto'
-        });
-
-        const campaign = new Campaign({
-            image_url: cloudinaryResponse.secure_url,
-            author,
-            title,
-            content,
-            url,
-            category,
-            fundRaisingStartDate: new Date(fundRaisingStartDate),
-            fundRaisingEndDate: new Date(fundRaisingEndDate),
-            donationGoal: Number(donationGoal)
-        });
-
-        await campaign.save();
-
-        // Clean up local file
-        fs.unlink(req.file.path, (err) => {
-            if (err) console.error('Error deleting local file:', err);
-        });
-
-        res.status(201).json({
-            success: true,
-            message: 'Campaign created successfully',
-            data: campaign
-        });
-
-    } catch (error) {
-        if (req.file) {
-            fs.unlink(req.file.path, () => {});
-        }
-        console.error('Campaign creation error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Campaign creation failed',
-            message: error.message
-        });
+// Comprehensive Cloudinary upload function
+const uploadImageToCloudinary = async (fileBuffer, options = {}) => {
+  try {
+    // Verify Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      throw new Error('Cloudinary Cloud Name is not configured');
     }
+
+    // Configure Cloudinary (safe to call multiple times)
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+
+    // Detailed logging
+    console.log('📸 Cloudinary Upload Attempt');
+    console.log('File Buffer Length:', fileBuffer.length);
+    console.log('Upload Options:', JSON.stringify(options));
+
+    // Use upload_stream for buffer upload
+    const cloudinaryUpload = () => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: options.folder || 'uploads',
+            resource_type: options.resource_type || 'auto'
+          }, 
+          (error, result) => {
+            if (error) {
+              console.error('❌ Cloudinary Upload Error:', error);
+              reject(error);
+            } else {
+              console.log('✅ Cloudinary Upload Success:', {
+                url: result.secure_url,
+                public_id: result.public_id
+              });
+              resolve(result);
+            }
+          }
+        );
+
+        // Write buffer to upload stream
+        uploadStream.end(fileBuffer);
+      });
+    };
+
+    // Perform the upload
+    const uploadResult = await cloudinaryUpload();
+
+    // Validate upload result
+    if (!uploadResult || !uploadResult.secure_url) {
+      throw new Error('No secure URL returned from Cloudinary');
+    }
+
+    return uploadResult;
+
+  } catch (error) {
+    console.error('🚨 Full Upload Error:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    throw error;
+  }
 };
+
+// Enhanced campaign creation controller
+const createCampaign = async (req, res) => {
+  try {
+    // Detailed request logging
+    console.log('🔍 Request Body:', JSON.stringify(req.body));
+    console.log('🖼️ Request File:', req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : 'No file');
+
+    // Validate file upload
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No file uploaded',
+        details: 'Image file is required'
+      });
+    }
+
+    // Destructure request body
+    const {
+      author,
+      title,
+      content,
+      category,
+      fundRaisingStartDate,
+      fundRaisingEndDate,
+      url,
+      donationGoal
+    } = req.body;
+
+    // Upload image to Cloudinary
+    let cloudinaryResponse;
+    try {
+      cloudinaryResponse = await uploadImageToCloudinary(req.file.buffer, {
+        folder: 'campaigns',
+        resource_type: 'image'
+      });
+    } catch (uploadError) {
+      console.error('Image Upload Failed:', uploadError);
+      return res.status(500).json({
+        success: false,
+        error: 'Image upload failed',
+        details: uploadError.message
+      });
+    }
+
+    // Validate Cloudinary response
+    if (!cloudinaryResponse || !cloudinaryResponse.secure_url) {
+      return res.status(500).json({
+        success: false,
+        error: 'Image URL generation failed'
+      });
+    }
+
+    // Create campaign
+    const campaign = new Campaign({
+      image_url: cloudinaryResponse.secure_url, // Explicitly set image URL
+      author,
+      title,
+      content,
+      url,
+      category,
+      fundRaisingStartDate: new Date(fundRaisingStartDate),
+      fundRaisingEndDate: new Date(fundRaisingEndDate),
+      donationGoal: Number(donationGoal)
+    });
+
+    // Save campaign
+    await campaign.save();
+
+    // Successful response
+    res.status(201).json({
+      success: true,
+      message: 'Campaign created successfully',
+      data: {
+        ...campaign.toObject(),
+        imageUrl: cloudinaryResponse.secure_url // Additional explicit imageUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('🚨 Campaign Creation Error:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Campaign creation failed',
+      details: error.message
+    });
+  }
+};
+
+module.exports = { createCampaign };
 
 // Your existing getAllCampaigns function
 const getAllCampaigns = async (req, res) => {

@@ -1,24 +1,13 @@
 const multer = require('multer');
-const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (!fs.existsSync('./uploads')) {
-      fs.mkdirSync('./uploads');
-    }
-    cb(null, './uploads');
-  },
-  filename: (req, file, cb) => {
-    const uniqueFilename = `${uuidv4()}-${file.originalname}`;
-    cb(null, uniqueFilename);
-  }
-});
+// For Vercel, we'll use memory storage instead of disk storage
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024, // 5MB file size limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {

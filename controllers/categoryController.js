@@ -1,90 +1,110 @@
-const asyncHandler = require('express-async-handler')
-const Category = require('../models/categoryModel.js')
+const asyncHandler = require('express-async-handler');
+const Category = require('../models/categoryModel.js');
 
-
-// @desc    Add News
-// @route   POST /api/news/addNews
+// @desc    Add Category
+// @route   POST /api/categories/add
 // @access  Private
 const addCategory = asyncHandler(async (req, res) => {
-    const { category_name } = req.body
-    const category = await Category.findOne({ category_name: category_name });
+    // Ensure the request body is parsed and category_name exists
+    const { category_name } = req.body;
 
-    if (category) {
-        return res.status(401).json({
+    // Check if category_name is undefined or an empty string
+    if (!category_name || typeof category_name !== 'string') {
+        return res.status(400).json({
+            success: false,
+            msg: 'Category name is required and must be a string.'
+        });
+    }
+
+    // Trim the category name
+    const trimmedCategoryName = category_name.trim();
+
+    // Check for existing category (case-insensitive)
+    const existingCategory = await Category.findOne({
+        category_name: { $regex: new RegExp(`^${trimmedCategoryName}$`, 'i') }
+    });
+
+    if (existingCategory) {
+        return res.status(400).json({
             success: false,
             msg: 'Category already added.'
-        })
+        });
     }
 
-    const new_cat = await Category.create({ category_name });
+    // Create the new category
+    const newCategory = await Category.create({ category_name: trimmedCategoryName });
 
-    res.status(201).json({
+    return res.status(201).json({
         success: true,
         msg: 'Category created',
-        data: new_cat
-    })
+        data: newCategory
+    });
+});
 
-
-})
-
-
+// @desc    Delete Category
+// @route   DELETE /api/categories/:catId
+// @access  Private
 const deleteCategory = asyncHandler(async (req, res) => {
-    console.log(req.params.catId)
-    const category = await Category.findByIdAndDelete(req.params.catId);
+    const categoryId = req.params.catId;
 
-    console.log(category)
+    // Find and delete the category
+    const deletedCategory = await Category.findByIdAndDelete(categoryId);
 
-    res.status(201).json({
-        success: true,
-        msg: 'Successfully Deleted',
-        data: category
-    })
-
-    if (!category) {
-        return res.status(401).json({
+    // Check if category was found and deleted
+    if (!deletedCategory) {
+        return res.status(404).json({
             success: false,
             msg: 'Category not found.'
-        })
+        });
     }
 
-})
+    // Return success response
+    res.status(200).json({
+        success: true,
+        msg: 'Successfully deleted',
+        data: deletedCategory
+    });
+});
 
-
-
+// @desc    Get All Categories
+// @route   GET /api/categories
+// @access  Private
 const getAllCategories = asyncHandler(async (req, res) => {
-    const categories = await Category.find({})
+    const categories = await Category.find({});
     res.json({
         success: true,
         data: categories
-    })
-})
+    });
+});
 
-
+// @desc    Edit Category
+// @route   PUT /api/categories/:catId
+// @access  Private
 const editCategory = asyncHandler(async (req, res) => {
-    let category = await Category.findById(req.params.catId);
+    const categoryId = req.params.catId;
+
+    // Find the category
+    let category = await Category.findById(categoryId);
 
     if (!category) {
-        return res.status(401).json({
+        return res.status(404).json({
             success: false,
             msg: 'Category not found.'
-        })
+        });
     }
 
-    category = await Category.findByIdAndUpdate(req.params.catId, req.body, {
+    // Update the category
+    category = await Category.findByIdAndUpdate(categoryId, req.body, {
         new: true,
         runValidators: true
     });
 
     res.status(200).json({ success: true, data: category, msg: 'Successfully updated' });
-})
-
-
-
-
+});
 
 module.exports = {
     addCategory,
     deleteCategory,
     getAllCategories,
     editCategory,
-}
+};
