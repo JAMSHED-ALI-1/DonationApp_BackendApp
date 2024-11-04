@@ -1,49 +1,26 @@
 const cloudinary = require('cloudinary').v2;
 
+// Ensure dotenv is loaded in the main server file, or require here as a backup
+require('dotenv').config();
 
-// Validate Cloudinary configuration
+// Log environment variables for debugging
+console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME);
+console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY);
+console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET);
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 const verifyCloudinaryConfig = () => {
-    const { 
-        CLOUDINARY_CLOUD_NAME, 
-        CLOUDINARY_API_KEY, 
-        CLOUDINARY_API_SECRET 
-    } = process.env;
-
-    // Comprehensive validation
-    if (!CLOUDINARY_CLOUD_NAME) {
-        console.error('❌ Cloudinary Cloud Name is missing');
-        throw new Error('Cloudinary Cloud Name is not set in .env');
-    }
-
-    if (!CLOUDINARY_API_KEY) {
-        console.error('❌ Cloudinary API Key is missing');
-        throw new Error('Cloudinary API Key is not set in .env');
-    }
-
-    if (!CLOUDINARY_API_SECRET) {
-        console.error('❌ Cloudinary API Secret is missing');
-        throw new Error('Cloudinary API Secret is not set in .env');
-    }
-
-    try {
-        // Configure Cloudinary with environment variables
-        cloudinary.config({
-            cloud_name: CLOUDINARY_CLOUD_NAME,
-            api_key: CLOUDINARY_API_KEY,
-            api_secret: CLOUDINARY_API_SECRET
-        });
-     
-
-        console.log('✅ Cloudinary Configuration Verified');
-    } catch (error) {
-        console.error('❌ Cloudinary Configuration Error:', error);
-        throw error;
-    }
+  console.log('Cloudinary Configuration:');
+  console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME ? 'Set' : 'Missing');
+  console.log('API Key:', process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing');
+  console.log('API Secret:', process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Missing');
 };
 
-// Export Cloudinary with uploader
-module.exports = {
-    cloudinaryUploader: cloudinary.uploader,
-    verifyCloudinaryConfig,
-    cloudinary
-};
+module.exports = cloudinary;
+module.exports.verifyCloudinaryConfig = verifyCloudinaryConfig;

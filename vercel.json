@@ -25,5 +25,10 @@
         "Access-Control-Allow-Origin": "*"
       }
     }
-  ]
+  ],
+  "env": {
+    "CLOUDINARY_CLOUD_NAME": "dj2ioptdi",
+    "CLOUDINARY_API_KEY": "382389347547385",
+    "CLOUDINARY_API_SECRET": "RR14D3ukG0oKTXhlp9hpsy_9V20"
+  }
 }

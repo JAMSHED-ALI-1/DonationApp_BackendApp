@@ -1,13 +1,13 @@
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
+const { Readable } = require('stream');
 
-// For Vercel, we'll use memory storage instead of disk storage
+// Use memory storage instead of disk storage
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB file size limit
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
